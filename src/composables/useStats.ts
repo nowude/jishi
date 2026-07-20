@@ -122,19 +122,17 @@ export function useStats() {
         let innerCur = cur
         while (innerCur.isSameOrBefore(weekEnd, 'day') && innerCur.isSameOrBefore(endD, 'day')) {
           const d = innerCur.format('YYYY-MM-DD')
-          if (!leaveSet.has(d)) {
-            const rec = recordMap.get(d)
-            if (rec) {
-              if (rec.workMinutes > 0) {
-                total += rec.workMinutes
-                hasData = true
-              } else if (d === today && rec.clockIn && !rec.clockOut) {
-                const nowStr = `${String(dayjs().hour()).padStart(2,'0')}:${String(dayjs().minute()).padStart(2,'0')}`
-                const [ih=0, im=0] = rec.clockIn.split(':').map(Number)
-                const [oh=0, om=0] = nowStr.split(':').map(Number)
-                total += Math.max(0, (oh * 60 + om) - (ih * 60 + im))
-                hasData = true
-              }
+          const rec = recordMap.get(d)
+          if (rec) {
+            if (rec.workMinutes > 0) {
+              total += rec.workMinutes
+              hasData = true
+            } else if (d === today && rec.clockIn && !rec.clockOut) {
+              const nowStr = `${String(dayjs().hour()).padStart(2,'0')}:${String(dayjs().minute()).padStart(2,'0')}`
+              const [ih=0, im=0] = rec.clockIn.split(':').map(Number)
+              const [oh=0, om=0] = nowStr.split(':').map(Number)
+              total += Math.max(0, (oh * 60 + om) - (ih * 60 + im))
+              hasData = true
             }
           }
           innerCur = innerCur.add(1, 'day')
@@ -160,9 +158,7 @@ export function useStats() {
         const endD2 = dayjs(me)
         while (cur2.isSameOrBefore(endD2, 'day')) {
           const d = cur2.format('YYYY-MM-DD')
-          if (!leaveSet.has(d)) {
-            total += recordMap.get(d)?.workMinutes ?? 0
-          }
+          total += recordMap.get(d)?.workMinutes ?? 0
           cur2 = cur2.add(1, 'day')
         }
         items.push({

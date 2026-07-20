@@ -114,7 +114,7 @@ export async function calcPeriodStats(start: string, end: string, workdaysConfig
     cur = cur.add(1, 'day')
   }
 
-  // 计算请假天数（全天请假算1天，半天请假算0.5天）
+  // 计算请假天数（全天请假算1天，半天请假算0.5天），仅做展示，不影响工时统计
   let leaveDays = 0
   const fullDayLeaves = new Set<string>()
   leaves.forEach((l) => {
@@ -126,11 +126,11 @@ export async function calcPeriodStats(start: string, end: string, workdaysConfig
   })
   leaveDays += fullDayLeaves.size
 
-  // 计算总工时（全天请假的日期不计入）
+  // 计算总工时 —— 请假不影响工时，有打卡记录就算
   let totalMinutes = 0
   let actualWorkdays = 0
   records.forEach((r) => {
-    if (r.workMinutes > 0 && !fullDayLeaves.has(r.date)) {
+    if (r.workMinutes > 0) {
       totalMinutes += r.workMinutes
       actualWorkdays++
     }

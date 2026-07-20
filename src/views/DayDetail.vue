@@ -98,12 +98,15 @@
         <div class="modal-title">添加请假</div>
         <div class="form-item">
           <label>请假类型</label>
-          <select v-model="leaveForm.type" class="select-input">
-            <option value="annual">年假</option>
-            <option value="sick">病假</option>
-            <option value="personal">事假</option>
-            <option value="compensatory">调休</option>
-          </select>
+          <div class="type-btns">
+            <button
+              v-for="t in leaveTypes"
+              :key="t.value"
+              class="type-btn"
+              :class="{ active: leaveForm.type === t.value }"
+              @click="leaveForm.type = t.value"
+            >{{ t.label }}</button>
+          </div>
         </div>
         <div class="form-item">
           <label class="toggle-label">
@@ -181,6 +184,13 @@ function leaveTypeLabel(type: string): string {
   }
   return map[type] || type
 }
+
+const leaveTypes = [
+  { value: 'annual' as const, label: '年假' },
+  { value: 'sick' as const, label: '病假' },
+  { value: 'personal' as const, label: '事假' },
+  { value: 'compensatory' as const, label: '调休' },
+]
 
 function openManualInput() {
   if (record.value) {
@@ -464,7 +474,7 @@ onMounted(() => {
   margin-bottom: 6px;
 }
 
-.time-input, .text-input, .select-input {
+.time-input, .text-input {
   width: 100%;
   height: 44px;
   border: 1px solid #ddd;
@@ -474,6 +484,31 @@ onMounted(() => {
   background: #fafafa;
   box-sizing: border-box;
   color: #323233;
+}
+
+/* 请假类型按钮选择 */
+.type-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.type-btn {
+  padding: 8px 16px;
+  border: 1.5px solid #ddd;
+  border-radius: 20px;
+  background: #fafafa;
+  font-size: 14px;
+  cursor: pointer;
+  color: #555;
+  transition: all 0.15s;
+}
+
+.type-btn.active {
+  border-color: #1989fa;
+  background: #e8f3ff;
+  color: #1989fa;
+  font-weight: 600;
 }
 
 .toggle-label {
