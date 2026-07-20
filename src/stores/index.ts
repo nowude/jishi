@@ -126,11 +126,11 @@ export async function calcPeriodStats(start: string, end: string, workdaysConfig
   })
   leaveDays += fullDayLeaves.size
 
-  // 计算总工时
+  // 计算总工时（全天请假的日期不计入）
   let totalMinutes = 0
   let actualWorkdays = 0
   records.forEach((r) => {
-    if (r.workMinutes > 0) {
+    if (r.workMinutes > 0 && !fullDayLeaves.has(r.date)) {
       totalMinutes += r.workMinutes
       actualWorkdays++
     }

@@ -2,142 +2,221 @@
   <div class="stats-page">
     <!-- 周期切换 -->
     <div class="period-tabs">
-      <van-button
+      <button
         v-for="p in periods"
         :key="p.value"
-        :type="period === p.value ? 'primary' : 'default'"
-        size="small"
-        round
-        @click="setPeriod(p.value)"
-      >
-        {{ p.label }}
-      </van-button>
+        class="tab-btn"
+        :class="{ active: period === p.value }"
+        @click="wrappedSetPeriod(p.value)"
+      >{{ p.label }}</button>
     </div>
 
     <!-- 期间导航 -->
     <div class="period-nav">
-      <van-icon name="arrow-left" size="20" @click="navigate(-1)" />
+      <button class="nav-btn" @click="wrappedNavigate(-1)">‹</button>
       <div class="period-label">{{ periodLabel }}</div>
-      <van-icon name="arrow" size="20" @click="navigate(1)" />
+      <button class="nav-btn" @click="wrappedNavigate(1)">›</button>
     </div>
 
     <!-- 统计卡片 -->
     <div v-if="stats" class="stats-cards">
       <div class="stat-card primary">
-        <div class="card-value">{{ stats.avgHours }}h</div>
+        <div class="card-value">{{ formatMinutes(stats.avgMinutes) }}</div>
         <div class="card-label">日均工时</div>
         <div class="card-sub">
-          标准日 {{ stats.standardHours }}h
+          共 {{ stats.actualWorkdays }} 个出勤日 · 请假 {{ stats.leaveDays }} 天
         </div>
       </div>
 
       <div class="stats-row">
         <div class="stat-card small">
-          <div class="card-value">{{ totalHoursDisplay }}h</div>
+          <div class="card-value blue">{{ formatMinutesShort(stats.totalMinutes) }}</div>
           <div class="card-label">累计工时</div>
         </div>
         <div class="stat-card small">
-          <div class="card-value">{{ stats.actualWorkdays }}</div>
+          <div class="card-value blue">{{ stats.actualWorkdays }}</div>
           <div class="card-label">出勤天数</div>
         </div>
         <div class="stat-card small">
-          <div class="card-value">{{ stats.leaveDays }}</div>
-          <div class="card-label">请假天数</div>
-        </div>
-      </div>
-
-      <div class="stats-row">
-        <div class="stat-card small">
-          <div class="card-value">{{ stats.workdays }}</div>
-          <div class="card-label">工作日总数</div>
-        </div>
-        <div class="stat-card small">
-          <div class="card-value">{{ attendanceRate }}%</div>
-          <div class="card-label">出勤率</div>
+          <div class="card-value blue">{{ stats.workdays }}</div>
+          <div class="card-label">工作日数</div>
         </div>
       </div>
     </div>
 
-    <!-- 图表区域 -->
-    <div class="chart-section">
-      <div class="chart-title">工时趋势</div>
-      <v-chart :option="chartOption" autoresize style="height: 250px" />
+    <!-- 图表 -->
+    <div class="chart-section" v-if="chartData.labels.length">
+      <div class="chart-title">工时明细</div>
+      <div class="bar-chart">
+        <div
+          v-for="(item, i) in chartData.items"
+          :key="i"
+          class="bar-col"
+        >
+          <div class="bar-label-top">{{ item.label }}</div>
+          <div class="bar-wrap">
+            <div
+              class="bar-fill"
+              :class="{ leave: item.isLeave, zero: item.minutes === 0 }"
+              :style="{ height: barHeight(item.minutes) + 'px' }"
+            />
+            <!-- 标准线 -->
+            <div class="standard-line" :style="{ bottom: barHeight(avgRequiredMinutes) + 'px' }" />
+          </div>
+          <div class="bar-label-bottom">{{ item.name }}</div>
+        </div>
+      </div>
+      <div class="chart-legend">
+        <span class="legend-dot blue" />达标
+        <span class="legend-dot orange" />未达标
+        <span class="legend-dot gray" />请假/未打卡
+        <span class="legend-line" />平均要求
+      </div>
+    </div>
+    <div v-else class="empty-chart">
+      <p>暂无打卡数据</p>
+      <p style="font-size:13px;color:#999;margin-top:4px">去首页打卡或日历页补录吧</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useStats, type StatsPeriod } from '@/composables/useStats'
-import { minutesToHours } from '@/utils/time'
-import VChart from 'vue-echarts'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart, BarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
+import { formatMinutes, formatMinutesShort } from '@/utils/time'
+import { getRecordsInRange, getLeavesInRange, getAllSettings } from '@/stores'
+import { dayjs } from '@/utils/time'
 
-use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent])
-
-const { period, stats, periodLabel, setPeriod, navigate, refresh } = useStats()
+const { period, stats, periodLabel, range, setPeriod, navigate, refresh } = useStats()
 
 const periods: { value: StatsPeriod; label: string }[] = [
-  { value: 'week', label: '周' },
+  { value: 'week', label: '本周' },
   { value: 'month', label: '月' },
   { value: 'year', label: '年' },
 ]
 
-const totalHoursDisplay = computed(() => {
-  if (!stats.value) return 0
-  return minutesToHours(stats.value.totalMinutes)
-})
+const avgRequiredMinutes = ref(11.5 * 60)
 
-const attendanceRate = computed(() => {
-  if (!stats.value || stats.value.workdays === 0) return 0
-  return Math.round((stats.value.actualWorkdays / stats.value.workdays) * 100)
-})
+interface ChartItem {
+  name: string      // 轴标签
+  label: string     // 顶部数值
+  minutes: number
+  isLeave: boolean
+}
 
-// 简易图表配置（后续接入真实数据）
-const chartOption = computed(() => ({
-  tooltip: { trigger: 'axis' as const },
-  grid: { left: 40, right: 16, top: 16, bottom: 24 },
-  xAxis: {
-    type: 'category' as const,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-  },
-  yAxis: {
-    type: 'value' as const,
-    name: '小时',
-    min: 0,
-    max: 12,
-  },
-  series: [
-    {
-      name: '工时',
-      type: 'bar' as const,
-      data: [8, 9.5, 8.5, 7, 8, 0, 0],
-      itemStyle: { color: '#1989fa' },
-      barWidth: '40%',
-    },
-    {
-      name: '标准',
-      type: 'line' as const,
-      data: [8, 8, 8, 8, 8, 0, 0],
-      lineStyle: { color: '#ee0a24', type: 'dashed' as const },
-      symbol: 'none',
-    },
-  ],
-}))
+const chartData = ref<{ labels: string[]; items: ChartItem[] }>({ labels: [], items: [] })
 
-onMounted(() => {
-  refresh()
-})
+const BAR_MAX_H = 120 // px
+
+function barHeight(minutes: number): number {
+  const max = chartData.value.items.reduce((m, i) => Math.max(m, i.minutes), avgRequiredMinutes.value * 1.2)
+  return Math.round((minutes / max) * BAR_MAX_H)
+}
+
+async function loadChartData() {
+  const s = await getAllSettings()
+  avgRequiredMinutes.value = Number(s.avgRequiredHours || '11.5') * 60
+
+  const { start, end } = range.value
+  const records = await getRecordsInRange(start, end)
+  const leaves = await getLeavesInRange(start, end)
+
+  const recordMap = new Map(records.map(r => [r.date, r]))
+  const leaveSet = new Set(leaves.filter(l => l.isFullDay).map(l => l.date))
+
+  const items: ChartItem[] = []
+
+  if (period.value === 'week') {
+    // 周视图：每天一列
+    let cur = dayjs(start)
+    const endD = dayjs(end)
+    while (cur.isSameOrBefore(endD, 'day')) {
+      const d = cur.format('YYYY-MM-DD')
+      const rec = recordMap.get(d)
+      const isLeave = leaveSet.has(d)
+      const mins = rec?.workMinutes ?? 0
+      const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+      items.push({
+        name: `周${dayNames[cur.day()]}`,
+        label: mins > 0 ? formatMinutesShort(mins) : (isLeave ? '假' : '-'),
+        minutes: mins,
+        isLeave,
+      })
+      cur = cur.add(1, 'day')
+    }
+  } else if (period.value === 'month') {
+    // 月视图：每天一列（工作日）
+    let cur = dayjs(start)
+    const endD = dayjs(end)
+    while (cur.isSameOrBefore(endD, 'day')) {
+      const d = cur.format('YYYY-MM-DD')
+      const day = cur.day()
+      if ([1,2,3,4,5].includes(day)) { // 只显示工作日
+        const rec = recordMap.get(d)
+        const isLeave = leaveSet.has(d)
+        const mins = rec?.workMinutes ?? 0
+        items.push({
+          name: `${cur.date()}`,
+          label: mins > 0 ? formatMinutesShort(mins) : (isLeave ? '假' : ''),
+          minutes: mins,
+          isLeave,
+        })
+      }
+      cur = cur.add(1, 'day')
+    }
+  } else {
+    // 年视图：每月一列
+    for (let m = 1; m <= 12; m++) {
+      const monthStart = `${dayjs(start).year()}-${String(m).padStart(2,'0')}-01`
+      const monthEnd = dayjs(monthStart).endOf('month').format('YYYY-MM-DD')
+      let total = 0
+      let cur2 = dayjs(monthStart)
+      const endD2 = dayjs(monthEnd)
+      while (cur2.isSameOrBefore(endD2, 'day')) {
+        const d = cur2.format('YYYY-MM-DD')
+        if (!leaveSet.has(d)) {
+          total += recordMap.get(d)?.workMinutes ?? 0
+        }
+        cur2 = cur2.add(1, 'day')
+      }
+      items.push({
+        name: `${m}月`,
+        label: total > 0 ? formatMinutesShort(total) : '',
+        minutes: total,
+        isLeave: false,
+      })
+    }
+  }
+
+  chartData.value = {
+    labels: items.map(i => i.name),
+    items,
+  }
+}
+
+async function doRefresh() {
+  await refresh()
+  await loadChartData()
+}
+
+function wrappedSetPeriod(p: StatsPeriod) {
+  setPeriod(p)
+  loadChartData()
+}
+
+function wrappedNavigate(dir: number) {
+  navigate(dir)
+  loadChartData()
+}
+
+onMounted(doRefresh)
 </script>
 
 <style scoped>
 .stats-page {
   padding: 16px;
   padding-top: calc(16px + var(--safe-top, 0px));
-  background: var(--jishi-bg);
+  background: var(--jishi-bg, #f7f8fa);
   min-height: 100%;
 }
 
@@ -148,16 +227,43 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
+.tab-btn {
+  padding: 6px 20px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  color: #666;
+}
+.tab-btn.active {
+  background: #1989fa;
+  border-color: #1989fa;
+  color: #fff;
+}
+
 .period-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 4px 8px;
   margin-bottom: 16px;
 }
 
+.nav-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #fff;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  color: #1989fa;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+}
+
 .period-label {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -165,46 +271,45 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
   background: var(--jishi-card, #fff);
   border-radius: 12px;
-  padding: 20px;
+  padding: 18px;
   text-align: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .stat-card.primary {
-  background: linear-gradient(135deg, #1989fa, #2b6cb0);
-  color: white;
+  background: linear-gradient(135deg, #1989fa, #0a6ebd);
+  color: #fff;
 }
 
-.stat-card.primary .card-sub {
-  color: rgba(255, 255, 255, 0.7);
-}
+.stat-card.primary .card-sub { color: rgba(255,255,255,0.75); }
 
 .card-value {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
+
+.card-value.blue { color: #1989fa; }
 
 .card-label {
   font-size: 13px;
   margin-top: 4px;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .card-sub {
   font-size: 12px;
-  margin-top: 8px;
-  color: var(--jishi-text-secondary);
+  margin-top: 6px;
 }
 
 .stats-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .stat-card.small {
@@ -212,27 +317,113 @@ onMounted(() => {
   padding: 14px 8px;
 }
 
-.stat-card.small .card-value {
-  font-size: 22px;
-  color: var(--jishi-primary);
-}
+.stat-card.small .card-value { font-size: 20px; }
 
-.stat-card.small .card-label {
-  font-size: 12px;
-  color: var(--jishi-text-secondary);
-}
-
+/* 图表 */
 .chart-section {
-  margin-top: 20px;
-  background: var(--jishi-card, #fff);
+  background: #fff;
   border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: 16px 12px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .chart-title {
   font-size: 15px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 32px;
+}
+
+.bar-label-top {
+  font-size: 9px;
+  color: #666;
+  height: 14px;
+  white-space: nowrap;
+}
+
+.bar-wrap {
+  position: relative;
+  width: 20px;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bar-fill {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: #1989fa;
+  min-height: 2px;
+  transition: height 0.3s;
+}
+
+.bar-fill.leave { background: #c8c9cc; }
+.bar-fill.zero  { background: #ebedf0; min-height: 2px; }
+
+.standard-line {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  height: 2px;
+  background: #ff976a;
+  opacity: 0.7;
+}
+
+.bar-label-bottom {
+  font-size: 10px;
+  color: #999;
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.legend-dot.blue   { background: #1989fa; }
+.legend-dot.orange { background: #ff976a; }
+.legend-dot.gray   { background: #c8c9cc; }
+
+.legend-line {
+  display: inline-block;
+  width: 20px;
+  height: 2px;
+  background: #ff976a;
+  vertical-align: middle;
+}
+
+.empty-chart {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 </style>

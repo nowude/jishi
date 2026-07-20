@@ -162,15 +162,20 @@ async function loadQuickStats() {
   weeklyTotalMinutes.value = weekStats.totalMinutes
   monthlyTotalMinutes.value = monthStats.totalMinutes
 
-  // 今日还需 = 日标准 - 已工作
+  // 今日还需 = 日均要求 - 已工作（请假全天则为0）
   const todayRecord = await getRecord(dayjs().format('YYYY-MM-DD'))
+  const { getLeavesForDate } = await import('@/stores')
+  const todayLeaves = await getLeavesForDate(dayjs().format('YYYY-MM-DD'))
+  const hasTodayFullLeave = todayLeaves.some((l: { isFullDay: boolean }) => l.isFullDay)
   let todayWorked = 0
-  if (todayRecord?.workMinutes) {
-    todayWorked = todayRecord.workMinutes
-  } else if (hasClockedIn.value && !hasClockedOut.value) {
-    todayWorked = currentWorkMinutes.value
+  if (!hasTodayFullLeave) {
+    if (todayRecord?.workMinutes) {
+      todayWorked = todayRecord.workMinutes
+    } else if (hasClockedIn.value && !hasClockedOut.value) {
+      todayWorked = currentWorkMinutes.value
+    }
   }
-  todayRemaining.value = Math.max(0, avgRequiredMinutes.value - todayWorked)
+  todayRemaining.value = hasTodayFullLeave ? 0 : Math.max(0, avgRequiredMinutes.value - todayWorked)
 
   // 本周还需 = (周工作日数 × 日均要求) - 本周已累计
   const totalWorkdays = getTotalWorkdaysThisWeek(workdays)
