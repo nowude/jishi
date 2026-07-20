@@ -51,14 +51,18 @@
       </div>
       <div class="info-card">
         <div v-if="leaves.length === 0" class="empty-text">无请假记录</div>
-        <div v-for="leave in leaves" :key="leave.id" class="info-row">
+        <div v-for="leave in leaves" :key="leave.id ?? leave.date" class="info-row leave-row">
           <span class="info-label">{{ leaveTypeLabel(leave.type) }}</span>
           <span class="info-value">{{ leave.isFullDay ? '全天' : `${leave.hours}小时` }}</span>
-          <button class="delete-btn" @click="handleDeleteLeave(leave.id!)">删除</button>
+          <template v-if="pendingDeleteLeaveId === leave.id">
+            <button class="confirm-del-btn" @click="doDeleteLeave(leave.id)">确认</button>
+            <button class="cancel-del-btn" @click="pendingDeleteLeaveId = null">取消</button>
+          </template>
+          <button v-else class="delete-btn" @click="pendingDeleteLeaveId = leave.id!">删除</button>
         </div>
       </div>
       <div v-if="hasLeaveToday" class="leave-tip">
-        ✓ 当天已标记请假，统计时将不计入工时
+        ✓ 当天已标记全天请假，统计时将不计入工时
       </div>
     </div>
 
@@ -235,9 +239,12 @@ async function handleLeaveSave() {
   await loadData()
 }
 
-async function handleDeleteLeave(id: number) {
-  if (!confirm('确认删除这条请假记录？')) return
+// 请假删除二次确认（内联，不用 confirm()）
+const pendingDeleteLeaveId = ref<number | null>(null)
+
+async function doDeleteLeave(id: number) {
   await deleteLeave(id)
+  pendingDeleteLeaveId.value = null
   await loadData()
 }
 
@@ -359,6 +366,30 @@ onMounted(() => {
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.confirm-del-btn {
+  background: #ee0a24;
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.cancel-del-btn {
+  background: #f5f5f5;
+  border: none;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
 }
 
 .empty-text {
