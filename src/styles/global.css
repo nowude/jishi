@@ -1,0 +1,43 @@
+:root {
+  --jishi-primary: #1989fa;
+  --jishi-success: #07c160;
+  --jishi-warning: #ff976a;
+  --jishi-danger: #ee0a24;
+  --jishi-bg: #f7f8fa;
+  --jishi-card: #ffffff;
+  --jishi-text: #323233;
+  --jishi-text-secondary: #969799;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  background: var(--jishi-bg);
+  color: var(--jishi-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --jishi-bg: #1a1a2e;
+    --jishi-card: #16213e;
+    --jishi-text: #e0e0e0;
+    --jishi-text-secondary: #888;
+  }
+}

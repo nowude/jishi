@@ -1,0 +1,8 @@
+name = "jishi-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jishi-db"
+database_id = "YOUR_D1_DATABASE_ID"  # 运行 wrangler d1 create jishi-db 后替换
