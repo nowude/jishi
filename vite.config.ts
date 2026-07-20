@@ -45,6 +45,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/],
+        // 强制跳过等待，新 SW 立即接管
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
