@@ -1,14 +1,28 @@
 :root {
-  --jishi-primary: #1989fa;
-  --jishi-success: #07c160;
-  --jishi-warning: #ff976a;
-  --jishi-danger: #ee0a24;
-  --jishi-bg: #f7f8fa;
-  --jishi-card: #ffffff;
-  --jishi-text: #323233;
-  --jishi-text-secondary: #969799;
+  --ji-primary: #6366f1;       /* 主色：靛蓝紫 */
+  --ji-primary-light: #818cf8;
+  --ji-primary-dark: #4f46e5;
+  --ji-accent: #a855f7;        /* 点缀：紫色 */
+  --ji-success: #10b981;       /* 绿 */
+  --ji-warning: #f59e0b;       /* 橙 */
+  --ji-danger: #ef4444;        /* 红 */
+  --ji-bg: #f1f5f9;
+  --ji-card: #ffffff;
+  --ji-text: #1e293b;
+  --ji-text-sec: #64748b;
+  --ji-border: #e2e8f0;
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
+
+  /* 兼容旧变量名 */
+  --jishi-primary: var(--ji-primary);
+  --jishi-success: var(--ji-success);
+  --jishi-warning: var(--ji-warning);
+  --jishi-danger: var(--ji-danger);
+  --jishi-bg: var(--ji-bg);
+  --jishi-card: var(--ji-card);
+  --jishi-text: var(--ji-text);
+  --jishi-text-secondary: var(--ji-text-sec);
 }
 
 * {
@@ -19,11 +33,10 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
-  background: var(--jishi-bg);
-  color: var(--jishi-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  background: var(--ji-bg);
+  color: var(--ji-text);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
 }
 
@@ -32,12 +45,15 @@ body {
   height: 100dvh;
 }
 
-/* 深色模式 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --jishi-bg: #1a1a2e;
-    --jishi-card: #16213e;
-    --jishi-text: #e0e0e0;
-    --jishi-text-secondary: #888;
+    --ji-primary: #818cf8;
+    --ji-primary-light: #a5b4fc;
+    --ji-primary-dark: #6366f1;
+    --ji-bg: #0f172a;
+    --ji-card: #1e293b;
+    --ji-text: #f1f5f9;
+    --ji-text-sec: #94a3b8;
+    --ji-border: #334155;
   }
 }

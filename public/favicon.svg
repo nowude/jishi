@@ -1,12 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1989fa"/>
-      <stop offset="100%" style="stop-color:#2b6cb0"/>
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#a855f7"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0.4"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
-  <text x="256" y="300" text-anchor="middle" fill="white" font-size="220" font-family="Arial,sans-serif" font-weight="bold">工</text>
-  <circle cx="370" cy="142" r="28" fill="#07c160"/>
-  <text x="370" y="154" text-anchor="middle" fill="white" font-size="28" font-family="Arial,sans-serif" font-weight="bold">✓</text>
+
+  <!-- 背景圆角矩形 -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- 装饰环 -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+
+  <!-- 时钟圆形外框 -->
+  <circle cx="256" cy="238" r="115" fill="none" stroke="url(#ring)" stroke-width="10"/>
+
+  <!-- 时钟刻度 12个 -->
+  <g stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round">
+    <line x1="256" y1="133" x2="256" y2="148"/>
+    <line x1="256" y1="313" x2="256" y2="328"/>
+    <line x1="141" y1="238" x2="156" y2="238"/>
+    <line x1="356" y1="238" x2="371" y2="238"/>
+    <line x1="175" y1="162" x2="183" y2="176"/>
+    <line x1="323" y1="296" x2="331" y2="310"/>
+    <line x1="329" y1="165" x2="321" y2="179"/>
+    <line x1="181" y1="299" x2="189" y2="313"/>
+  </g>
+
+  <!-- 分针 -->
+  <line x1="256" y1="238" x2="256" y2="158" stroke="white" stroke-width="9" stroke-linecap="round"/>
+  <!-- 时针 (指向约4点) -->
+  <line x1="256" y1="238" x2="304" y2="278" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <!-- 中心圆点 -->
+  <circle cx="256" cy="238" r="10" fill="white"/>
+
+  <!-- "积" 字样 -->
+  <text x="256" y="400" font-family="'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+        font-size="72" font-weight="700" fill="white" text-anchor="middle" opacity="0.92">积时</text>
+
+  <!-- 底部装饰线 -->
+  <line x1="190" y1="418" x2="322" y2="418" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
 </svg>
