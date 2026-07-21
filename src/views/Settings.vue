@@ -149,14 +149,25 @@
           class="modal-textarea"
           placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
           rows="3"
+          @paste="onTokenPaste"
         />
+        <!-- 清洗后预览 -->
+        <div v-if="cleanedTokenPreview" class="token-preview">
+          清洗后：<code>{{ cleanedTokenPreview }}</code>
+        </div>
         <div class="modal-hint">
           GitHub → Settings → Developer settings →<br>
           Personal access tokens → Tokens (classic)<br>
           生成时勾选 <b>gist</b> 权限
         </div>
+        <div v-if="tokenVerifyState !== 'idle'" class="token-verify-row" :class="tokenVerifyState">
+          {{ tokenVerifyMsg }}
+        </div>
         <div class="modal-actions">
           <button class="modal-btn cancel" @click="showGistTokenModal = false">取消</button>
+          <button class="modal-btn verify-btn" @click="verifyToken" :disabled="tokenVerifyState === 'checking'">
+            {{ tokenVerifyState === 'checking' ? '验证中…' : '验证' }}
+          </button>
           <button class="modal-btn confirm" @click="saveGistToken">保存</button>
         </div>
       </div>
@@ -315,8 +326,45 @@ const gistTokenInput = ref('')
 const gistIdInput = ref('')
 const showGistGuide = ref(false)
 
+// 去掉所有空白和不可见字符（iOS粘贴时极易混入）
+function cleanToken(raw: string): string {
+  return raw
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // 控制字符
+    .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')   // 零宽字符
+    .replace(/\s/g, '')                             // 所有空白换行
+    .trim()
+}
+
+const tokenVerifyState = ref<'idle' | 'checking' | 'ok' | 'fail'>('idle')
+const tokenVerifyMsg = ref('')
+
+async function verifyToken() {
+  const t = cleanToken(gistTokenInput.value)
+  if (!t) return
+  tokenVerifyState.value = 'checking'
+  tokenVerifyMsg.value = ''
+  try {
+    const res = await fetch('https://api.github.com/gists?per_page=1', {
+      headers: { Authorization: `Bearer ${t}`, Accept: 'application/vnd.github+json' },
+    })
+    if (res.ok) {
+      tokenVerifyState.value = 'ok'
+      tokenVerifyMsg.value = 'Token 有效 ✓'
+    } else {
+      const err = await res.json().catch(() => ({ message: res.statusText }))
+      tokenVerifyState.value = 'fail'
+      tokenVerifyMsg.value = err.message || `HTTP ${res.status}`
+    }
+  } catch (e: unknown) {
+    tokenVerifyState.value = 'fail'
+    tokenVerifyMsg.value = (e as Error).message
+  }
+}
+
 function openGistTokenModal() {
   gistTokenInput.value = gistToken.value
+  tokenVerifyState.value = 'idle'
+  tokenVerifyMsg.value = ''
   showGistTokenModal.value = true
 }
 function openGistIdModal() {
@@ -325,11 +373,11 @@ function openGistIdModal() {
 }
 
 async function saveGistToken() {
-  const t = gistTokenInput.value.trim()
+  const t = cleanToken(gistTokenInput.value)  // 清洗不可见字符
   await setSetting('gistToken', t)
   gistToken.value = t
   showGistTokenModal.value = false
-  showMsg(t ? 'Token 已保存' : 'Token 已清除')
+  showMsg(t ? `Token 已保存 (${t.slice(0,8)}…)` : 'Token 已清除')
 }
 
 async function saveGistId() {
@@ -627,7 +675,24 @@ onMounted(loadSettings)
 }
 .modal-btn.cancel  { background: #f1f5f9; color: #64748b; }
 .modal-btn.confirm { background: #6366f1; color: #fff; }
-.modal-btn.danger  { background: #ef4444; color: #fff; }
+.modal-btn.verify-btn {
+  flex: 0 0 auto;
+  padding: 0 16px;
+  background: #f1f5f9;
+  color: #6366f1;
+  border: 1.5px solid #6366f1;
+}
+
+.token-verify-row {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.token-verify-row.checking { background: #f1f5f9; color: #64748b; }
+.token-verify-row.ok       { background: #d1fae5; color: #065f46; }
+.token-verify-row.fail     { background: #fee2e2; color: #991b1b; }
 
 /* 工作日 */
 .weekday-grid {
