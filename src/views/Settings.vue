@@ -64,7 +64,7 @@
         <button class="action-btn primary" @click="handlePush" :disabled="syncing">
           {{ syncing ? '同步中…' : '⬆ 推送到云端' }}
         </button>
-        <button class="action-btn outline" @click="pendingPull = true" :disabled="syncing">
+        <button class="action-btn outline" @click="openPullConfirm" :disabled="syncing">
           ⬇ 从云端拉取
         </button>
       </div>
@@ -407,6 +407,13 @@ async function handlePush() {
   }
 }
 
+// 点拉取按钮时先校验，再弹确认
+function openPullConfirm() {
+  if (!gistToken.value) { showMsg('请先配置 GitHub Token', 'warn'); openGistTokenModal(); return }
+  if (!gistId.value) { showMsg('请先配置 Gist ID（首次推送后自动填入）', 'warn'); return }
+  pendingPull.value = true
+}
+
 async function doConfirmPull() {
   pendingPull.value = false
   syncing.value = true
@@ -500,9 +507,14 @@ async function loadSettings() {
   const s = await getAllSettings()
   settings.value = s
   selectedWorkdays.value = s.workdays?.split(',').map(Number) || [1, 2, 3, 4, 5]
-  gistToken.value = s.gistToken || ''
-  gistId.value = s.gistId || ''
+  // 读出时也清洗，修复旧数据里的不可见字符
+  gistToken.value = cleanToken(s.gistToken || '')
+  gistId.value = (s.gistId || '').trim()
   lastSyncAt.value = s.lastSyncAt || ''
+  // 如果清洗后 token 与存储不同，回写干净版本
+  if (s.gistToken && gistToken.value !== s.gistToken) {
+    await setSetting('gistToken', gistToken.value)
+  }
 }
 
 onMounted(loadSettings)
