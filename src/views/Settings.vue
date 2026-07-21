@@ -335,7 +335,7 @@ const tokenVerifyMsg = ref('')
 
 async function verifyToken() {
   const t = cleanToken(gistTokenInput.value)
-  if (!t) return
+  if (!t) { showMsg('请输入 Token', 'warn'); return }
   tokenVerifyState.value = 'checking'
   tokenVerifyMsg.value = ''
   try {
@@ -344,15 +344,15 @@ async function verifyToken() {
     })
     if (res.ok) {
       tokenVerifyState.value = 'ok'
-      tokenVerifyMsg.value = 'Token 有效 ✓'
+      tokenVerifyMsg.value = `✓ Token 有效  (${t.slice(0,8)}…)`
     } else {
       const err = await res.json().catch(() => ({ message: res.statusText }))
       tokenVerifyState.value = 'fail'
-      tokenVerifyMsg.value = err.message || `HTTP ${res.status}`
+      tokenVerifyMsg.value = `✗ 无效: ${err.message || `HTTP ${res.status}`}`
     }
   } catch (e: unknown) {
     tokenVerifyState.value = 'fail'
-    tokenVerifyMsg.value = (e as Error).message
+    tokenVerifyMsg.value = `✗ 网络错误: ${(e as Error).message}`
   }
 }
 
@@ -384,7 +384,8 @@ async function saveGistId() {
 }
 
 async function handlePush() {
-  if (!gistToken.value) {
+  const token = cleanToken(gistToken.value)
+  if (!token) {
     showMsg('请先配置 GitHub Token', 'warn')
     openGistTokenModal()
     return
@@ -392,7 +393,7 @@ async function handlePush() {
   syncing.value = true
   syncMessage.value = '正在推送数据到 Gist…'
   try {
-    const newId = await pushToGist(gistToken.value, gistId.value || null)
+    const newId = await pushToGist(token, gistId.value || null)
     gistId.value = newId
     await setSetting('gistId', newId)
     const now = new Date().toLocaleString('zh-CN')
@@ -416,10 +417,12 @@ function openPullConfirm() {
 
 async function doConfirmPull() {
   pendingPull.value = false
+  const token = cleanToken(gistToken.value)
+  if (!token) { showMsg('Token 已失效，请重新配置', 'error'); openGistTokenModal(); return }
   syncing.value = true
   syncMessage.value = '正在从 Gist 拉取数据…'
   try {
-    await pullFromGist(gistToken.value, gistId.value)
+    await pullFromGist(token, gistId.value)
     const now = new Date().toLocaleString('zh-CN')
     lastSyncAt.value = now
     await setSetting('lastSyncAt', now)
@@ -507,14 +510,10 @@ async function loadSettings() {
   const s = await getAllSettings()
   settings.value = s
   selectedWorkdays.value = s.workdays?.split(',').map(Number) || [1, 2, 3, 4, 5]
-  // 读出时也清洗，修复旧数据里的不可见字符
-  gistToken.value = cleanToken(s.gistToken || '')
+  // 直接读取，不做任何修改
+  gistToken.value = s.gistToken || ''
   gistId.value = (s.gistId || '').trim()
   lastSyncAt.value = s.lastSyncAt || ''
-  // 如果清洗后 token 与存储不同，回写干净版本
-  if (s.gistToken && gistToken.value !== s.gistToken) {
-    await setSetting('gistToken', gistToken.value)
-  }
 }
 
 onMounted(loadSettings)
