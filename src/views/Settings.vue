@@ -437,12 +437,15 @@ async function doConfirmPull() {
 
 /* ── 导出 ── */
 async function exportJSON() {
+  const allSettings = await db.settings.toArray()
+  const settings = allSettings.filter((item) => item.key !== 'gistToken' && item.key !== 'apiToken')
   const data = {
     records: await db.records.toArray(),
     leaves: await db.leaves.toArray(),
-    settings: await db.settings.toArray(),
+    settings,
     exportDate: new Date().toISOString(),
-    version: '1.2',
+    version: '2.0',
+    note: '敏感 Token 不包含在备份中，仅保存在本设备',
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
   const url = URL.createObjectURL(blob)

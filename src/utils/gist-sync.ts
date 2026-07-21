@@ -131,14 +131,19 @@ export interface SyncResult {
   message: string
 }
 
-/** 序列化本地数据为 JSON */
+/** 需要留在本设备、禁止上传到云端/备份文件的敏感配置 */
+const SENSITIVE_SETTING_KEYS = new Set(['gistToken', 'apiToken'])
+
+/** 序列化本地数据为 JSON（排除 Token 等敏感信息） */
 async function serializeLocalData(): Promise<string> {
+  const allSettings = await db.settings.toArray()
+  const settings = allSettings.filter((item) => !SENSITIVE_SETTING_KEYS.has(item.key))
   const data = {
     records: await db.records.toArray(),
     leaves: await db.leaves.toArray(),
-    settings: await db.settings.toArray(),
+    settings,
     syncAt: new Date().toISOString(),
-    version: 1,
+    version: 2,
   }
   return JSON.stringify(data, null, 2)
 }
@@ -168,8 +173,10 @@ async function importData(json: string): Promise<void> {
     await db.leaves.bulkAdd(leaves as unknown as Parameters<typeof db.leaves.bulkAdd>[0])
   }
   if (data.settings && Array.isArray(data.settings)) {
-    await db.settings.clear()
-    await db.settings.bulkAdd(data.settings as unknown as Parameters<typeof db.settings.bulkAdd>[0])
+    // 云端设置只恢复普通配置，绝不覆盖本设备的 Token
+    const safeSettings = (data.settings as { key?: string; value?: string }[])
+      .filter((item) => item.key && !SENSITIVE_SETTING_KEYS.has(item.key))
+    await db.settings.bulkPut(safeSettings as unknown as Parameters<typeof db.settings.bulkPut>[0])
   }
 }
 
