@@ -149,12 +149,7 @@
           class="modal-textarea"
           placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
           rows="3"
-          @paste="onTokenPaste"
         />
-        <!-- 清洗后预览 -->
-        <div v-if="cleanedTokenPreview" class="token-preview">
-          清洗后：<code>{{ cleanedTokenPreview }}</code>
-        </div>
         <div class="modal-hint">
           GitHub → Settings → Developer settings →<br>
           Personal access tokens → Tokens (classic)<br>
