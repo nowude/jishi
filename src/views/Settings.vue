@@ -64,7 +64,7 @@
         <button class="action-btn primary" @click="handlePush" :disabled="syncing">
           {{ syncing ? '同步中…' : '⬆ 推送到云端' }}
         </button>
-        <button class="action-btn outline" @click="handlePull" :disabled="syncing">
+        <button class="action-btn outline" @click="pendingPull = true" :disabled="syncing">
           ⬇ 从云端拉取
         </button>
       </div>
@@ -175,7 +175,33 @@
       </div>
     </div>
 
-    <!-- ── 清除确认弹窗 ── -->
+    <!-- ── 导入确认弹窗 ── -->
+    <div v-if="pendingImport" class="modal-mask" @click.self="pendingImport = false">
+      <div class="modal-box">
+        <div class="modal-title">导入 JSON 备份</div>
+        <p style="font-size:14px;color:#64748b;line-height:1.7;margin-bottom:4px">
+          此操作将<b style="color:#ef4444">覆盖本地所有记录</b>，导入前建议先导出备份。确认继续？
+        </p>
+        <div class="modal-actions">
+          <button class="modal-btn cancel" @click="pendingImport = false">取消</button>
+          <button class="modal-btn confirm" @click="doConfirmImport">确认导入</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 拉取确认弹窗 ── -->
+    <div v-if="pendingPull" class="modal-mask" @click.self="pendingPull = false">
+      <div class="modal-box">
+        <div class="modal-title">从云端拉取数据</div>
+        <p style="font-size:14px;color:#64748b;line-height:1.7;margin-bottom:4px">
+          此操作将用 Gist 中的备份<b style="color:#ef4444">覆盖本地所有记录</b>，确认继续？
+        </p>
+        <div class="modal-actions">
+          <button class="modal-btn cancel" @click="pendingPull = false">取消</button>
+          <button class="modal-btn confirm" @click="doConfirmPull">确认拉取</button>
+        </div>
+      </div>
+    </div>
     <div v-if="pendingClearAll" class="modal-mask" @click.self="pendingClearAll = false">
       <div class="modal-box">
         <div class="modal-title danger-text">⚠️ 清除所有数据</div>
@@ -338,12 +364,14 @@ async function handlePush() {
   }
 }
 
-async function handlePull() {
+function handlePull() {
   if (!gistToken.value) { showMsg('请先配置 GitHub Token', 'warn'); openGistTokenModal(); return }
   if (!gistId.value) { showMsg('请先配置 Gist ID', 'warn'); openGistIdModal(); return }
+  pendingPull.value = true
+}
 
-  if (!confirm('从 Gist 拉取将覆盖本地全部记录，确认吗？')) return
-
+async function doConfirmPull() {
+  pendingPull.value = false
   syncing.value = true
   syncMessage.value = '正在从 Gist 拉取数据…'
   try {
@@ -398,7 +426,15 @@ function importJSON() { fileInput.value?.click() }
 async function handleFileImport(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
-  if (!confirm('导入将覆盖本地所有记录，确认吗？')) return
+  pendingImportFile.value = file
+  pendingImport.value = true
+  ;(e.target as HTMLInputElement).value = ''
+}
+
+async function doConfirmImport() {
+  const file = pendingImportFile.value
+  pendingImport.value = false
+  if (!file) return
   try {
     const data = JSON.parse(await file.text())
     if (data.records) { await db.records.clear(); await db.records.bulkAdd(data.records) }
@@ -409,10 +445,12 @@ async function handleFileImport(e: Event) {
   } catch {
     showMsg('导入失败，文件格式错误', 'error')
   }
-  ;(e.target as HTMLInputElement).value = ''
 }
 
 /* ── 清除全部 ── */
+const pendingPull = ref(false)
+const pendingImport = ref(false)
+const pendingImportFile = ref<File | null>(null)
 const pendingClearAll = ref(false)
 async function doClearAll() {
   await clearAllData()
