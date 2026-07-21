@@ -85,12 +85,23 @@ export async function updateGist(token: string, gistId: string, content: string)
   })
 }
 
-/** 读取 Gist 内容 */
+/** 读取 Gist 内容（自动处理截断） */
 export async function readGist(token: string, gistId: string): Promise<string> {
   const res = await gistRequest(token, `/${gistId}`)
-  const data = await res.json() as { files: Record<string, { content: string }> }
+  const data = await res.json() as {
+    files: Record<string, { content: string; truncated: boolean; raw_url: string }>
+  }
   const file = data.files[GIST_FILENAME]
-  if (!file) throw new Error('Gist 中未找到 JiShi 备份文件')
+  if (!file) throw new Error('Gist 中未找到积时备份文件，请先推送一次')
+
+  // GitHub 超过 1MB 时会截断，通过 raw_url 获取完整内容
+  if (file.truncated || !file.content) {
+    const rawRes = await fetch(file.raw_url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!rawRes.ok) throw new Error(`获取完整内容失败: ${rawRes.status}`)
+    return rawRes.text()
+  }
   return file.content
 }
 
@@ -118,27 +129,31 @@ async function serializeLocalData(): Promise<string> {
 
 /** 反序列化并导入数据到本地 */
 async function importData(json: string): Promise<void> {
-  const data = JSON.parse(json)
-  if (data.records) {
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(json)
+  } catch {
+    throw new Error('数据格式错误，无法解析 JSON')
+  }
+
+  if (!data.records && !data.leaves) {
+    throw new Error('备份文件中没有有效数据')
+  }
+
+  if (data.records && Array.isArray(data.records)) {
     await db.records.clear()
-    // 去掉 id 让 Dexie 自增
-    const records = data.records.map((r: Record<string, unknown>) => {
-      const { id, ...rest } = r
-      return rest
-    })
-    await db.records.bulkAdd(records)
+    // 去掉 id 让 Dexie 重新自增，避免主键冲突
+    const records = (data.records as Record<string, unknown>[]).map(({ id: _id, ...rest }) => rest)
+    await db.records.bulkAdd(records as unknown as Parameters<typeof db.records.bulkAdd>[0])
   }
-  if (data.leaves) {
+  if (data.leaves && Array.isArray(data.leaves)) {
     await db.leaves.clear()
-    const leaves = data.leaves.map((l: Record<string, unknown>) => {
-      const { id, ...rest } = l
-      return rest
-    })
-    await db.leaves.bulkAdd(leaves)
+    const leaves = (data.leaves as Record<string, unknown>[]).map(({ id: _id, ...rest }) => rest)
+    await db.leaves.bulkAdd(leaves as unknown as Parameters<typeof db.leaves.bulkAdd>[0])
   }
-  if (data.settings) {
+  if (data.settings && Array.isArray(data.settings)) {
     await db.settings.clear()
-    await db.settings.bulkAdd(data.settings)
+    await db.settings.bulkAdd(data.settings as unknown as Parameters<typeof db.settings.bulkAdd>[0])
   }
 }
 
