@@ -20,19 +20,35 @@ export interface SyncStatus {
 /* ─── Gist API 封装 ─── */
 
 async function gistRequest(token: string, path: string, options: RequestInit = {}): Promise<Response> {
+  const normalizedToken = token
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF\u00AD]/g, '')
+    .replace(/\s/g, '')
+    .trim()
+  if (!normalizedToken) throw new Error('GitHub Token 为空，请重新配置')
+
   const url = path.startsWith('http') ? path : `${GIST_API}${path}`
   const res = await fetch(url, {
     ...options,
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${normalizedToken}`,
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
       ...options.headers,
     },
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message || `GitHub API error: ${res.status}`)
+    const err = await res.json().catch(() => ({})) as { message?: string; documentation_url?: string }
+    const message = err.message || res.statusText
+    if (res.status === 401) {
+      throw new Error('GitHub Token 无效或已被撤销（401），请重新生成 classic Token，并勾选 gist 权限')
+    }
+    if (res.status === 403) {
+      throw new Error(`GitHub 拒绝访问（403）：${message}。请检查 Token 的 gist 权限或 API 限流`)
+    }
+    if (res.status === 404) {
+      throw new Error(`Gist 不存在或无权访问（404）。请检查 Gist ID 是否完整且属于当前 GitHub 账号`)
+    }
+    throw new Error(`GitHub API ${res.status}: ${message}`)
   }
   return res
 }
