@@ -364,12 +364,6 @@ async function handlePush() {
   }
 }
 
-function handlePull() {
-  if (!gistToken.value) { showMsg('请先配置 GitHub Token', 'warn'); openGistTokenModal(); return }
-  if (!gistId.value) { showMsg('请先配置 Gist ID', 'warn'); openGistIdModal(); return }
-  pendingPull.value = true
-}
-
 async function doConfirmPull() {
   pendingPull.value = false
   syncing.value = true
