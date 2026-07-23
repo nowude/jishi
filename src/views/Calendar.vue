@@ -16,32 +16,29 @@
 
     <!-- 日历网格 -->
     <div class="calendar-grid">
-      <div
-        v-for="day in days"
-        :key="day.date"
-        class="day-cell"
-        :class="{
-          'other-month': !day.isCurrentMonth,
-          'today': day.isToday,
-          'is-friday': day.isFriday && day.isCurrentMonth,
-        }"
-        @click="goDayDetail(day)"
-      >
-        <div class="day-number">
-          {{ day.day }}
-          <span v-if="day.isFriday && day.isCurrentMonth" class="fri-badge">五</span>
-        </div>
-        <div
-          v-if="day.displayText && day.isCurrentMonth"
-          class="day-work"
-          :class="day.status"
+      <template v-for="day in days" :key="day.date">
+        <router-link
+          v-if="day.isCurrentMonth"
+          :to="`/day/${day.date}`"
+          class="day-cell day-cell-link"
+          :class="{
+            today: day.isToday,
+            'is-friday': day.isFriday,
+          }"
         >
-          {{ day.displayText }}
+          <div class="day-number">
+            {{ day.day }}
+            <span v-if="day.isFriday" class="fri-badge">五</span>
+          </div>
+          <div v-if="day.displayText" class="day-work" :class="day.status">
+            {{ day.displayText }}
+          </div>
+          <div v-if="day.hasLeave" class="day-leave">假</div>
+        </router-link>
+        <div v-else class="day-cell other-month">
+          <div class="day-number">{{ day.day }}</div>
         </div>
-        <div v-if="day.hasLeave && day.isCurrentMonth" class="day-leave">
-          假
-        </div>
-      </div>
+      </template>
     </div>
 
     <!-- 图例 -->
@@ -57,18 +54,11 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useCalendar, type CalendarDay } from '@/composables/useCalendar'
+import { useCalendar } from '@/composables/useCalendar'
 
-const router = useRouter()
 const { year, month, days, loadMonth, prevMonth, nextMonth, goToday } = useCalendar()
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
-
-function goDayDetail(day: CalendarDay) {
-  if (!day.isCurrentMonth) return
-  router.push(`/day/${day.date}`)
-}
 
 onMounted(() => {
   loadMonth()
@@ -120,24 +110,20 @@ onMounted(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
-.day-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 2px;
-  min-height: 56px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
+.day-cell-link {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.day-cell:active {
+.day-cell-link:active {
   background: #f0f0f0;
 }
 
-.day-cell.other-month {
+.day-cell-link.other-month {
   opacity: 0.3;
 }
+
 
 .day-cell.today .day-number {
   background: var(--jishi-primary);
