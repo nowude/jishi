@@ -2,7 +2,7 @@
   <div class="day-detail-page">
     <!-- 顶部导航 -->
     <div class="page-header">
-      <button class="back-btn" @click="router.back()">‹ 返回</button>
+      <button class="back-btn" @click="goBack">‹ 返回</button>
       <span class="page-title">{{ dateDisplay }}</span>
       <span style="width:60px" />
     </div>
@@ -217,6 +217,15 @@ const leaveTypes = [
   { value: 'compensatory' as const, label: '调休' },
 ]
 
+async function goBack() {
+  // 直接从主屏或刷新进入详情时，history 可能没有可返回页面
+  if (window.history.length > 1) {
+    await router.back()
+  } else {
+    await router.replace('/calendar')
+  }
+}
+
 function openManualInput() {
   if (record.value) {
     manualClockInDate.value = record.value.date
@@ -283,6 +292,7 @@ async function handleManualSave() {
   await saveRecord(newRecord)
   showManualInput.value = false
   await loadData()
+  await router.replace('/calendar')
 }
 
 async function handleLeaveSave() {
@@ -524,21 +534,45 @@ onMounted(() => {
 
 .date-time-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
+  align-items: end;
 }
 
-.date-input {
+.date-time-row > div {
+  min-width: 0;
+}
+
+.date-input, .time-input {
   width: 100%;
   height: 44px;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 0 8px;
+  padding: 0 10px;
+  font-size: 16px;
+  line-height: 44px;
+  background: #fafafa;
+  box-sizing: border-box;
+  color: #323233;
+  display: block;
+}
+
+.date-input {
   font-size: 14px;
+}
+
+.text-input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 16px;
   background: #fafafa;
   box-sizing: border-box;
   color: #323233;
 }
+
 
 .date-input:focus, .time-input:focus, .text-input:focus {
   outline: none;
