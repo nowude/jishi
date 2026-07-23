@@ -6,6 +6,7 @@ export interface ClockRecord {
   date: string        // YYYY-MM-DD
   clockIn: string     // HH:mm
   clockOut: string    // HH:mm（可为空）
+  clockOutDate?: string // 下班日期 YYYY-MM-DD；旧记录缺省时使用 date
   breakMinutes: number
   workMinutes: number // 自动计算
   isManual: boolean

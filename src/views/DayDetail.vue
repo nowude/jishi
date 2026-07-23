@@ -17,7 +17,12 @@
         </div>
         <div class="info-row">
           <span class="info-label">下班签退</span>
-          <span class="info-value">{{ record?.clockOut || '未签退' }}</span>
+          <span class="info-value">
+            {{ record?.clockOut || '未签退' }}
+            <small v-if="record?.clockOut && record?.clockOutDate && record.clockOutDate !== record.date" class="next-day-label">
+              {{ record.clockOutDate }}
+            </small>
+          </span>
         </div>
         <div class="info-row">
           <span class="info-label">实际工时</span>
@@ -70,13 +75,25 @@
     <div v-if="showManualInput" class="modal-mask" @click.self="showManualInput = false">
       <div class="modal-box">
         <div class="modal-title">{{ record ? '编辑打卡记录' : '补录打卡' }}</div>
-        <div class="form-item">
-          <label>上班时间</label>
-          <input v-model="manualClockIn" type="time" class="time-input" />
+        <div class="form-item date-time-row">
+          <div>
+            <label>上班日期</label>
+            <input v-model="manualClockInDate" type="date" class="date-input" />
+          </div>
+          <div>
+            <label>上班时间</label>
+            <input v-model="manualClockIn" type="time" class="time-input" />
+          </div>
         </div>
-        <div class="form-item">
-          <label>下班时间</label>
-          <input v-model="manualClockOut" type="time" class="time-input" />
+        <div class="form-item date-time-row">
+          <div>
+            <label>下班日期</label>
+            <input v-model="manualClockOutDate" type="date" class="date-input" />
+          </div>
+          <div>
+            <label>下班时间</label>
+            <input v-model="manualClockOut" type="time" class="time-input" />
+          </div>
         </div>
         <div class="form-item">
           <label>备注（可选）</label>
@@ -156,13 +173,21 @@ const workTimeDisplay = computed(() => {
 
 // 补录表单
 const showManualInput = ref(false)
+const manualClockInDate = ref(date.value)
+const manualClockOutDate = ref(date.value)
 const manualClockIn = ref('09:00')
 const manualClockOut = ref('21:30')
 const manualNote = ref('')
 
 // 预览工时
 const previewMinutes = computed(() => {
-  const mins = calcWorkMinutes(manualClockIn.value, manualClockOut.value)
+  const mins = calcWorkMinutes(
+    manualClockIn.value,
+    manualClockOut.value,
+    0,
+    manualClockInDate.value,
+    manualClockOutDate.value,
+  )
   return formatMinutes(mins)
 })
 
@@ -194,10 +219,14 @@ const leaveTypes = [
 
 function openManualInput() {
   if (record.value) {
+    manualClockInDate.value = record.value.date
+    manualClockOutDate.value = record.value.clockOutDate || record.value.date
     manualClockIn.value = record.value.clockIn || '09:00'
     manualClockOut.value = record.value.clockOut || '21:30'
     manualNote.value = record.value.note || ''
   } else {
+    manualClockInDate.value = date.value
+    manualClockOutDate.value = date.value
     manualClockIn.value = '09:00'
     manualClockOut.value = '21:30'
     manualNote.value = ''
@@ -220,12 +249,31 @@ async function handleManualSave() {
     alert('请填写上班时间')
     return
   }
-  const workMins = calcWorkMinutes(manualClockIn.value, manualClockOut.value)
+  if (!manualClockOut.value) {
+    alert('请填写下班时间')
+    return
+  }
+  if (!manualClockInDate.value || !manualClockOutDate.value) {
+    alert('请选择上下班日期')
+    return
+  }
+  const workMins = calcWorkMinutes(
+    manualClockIn.value,
+    manualClockOut.value,
+    0,
+    manualClockInDate.value,
+    manualClockOutDate.value,
+  )
+  if (workMins <= 0) {
+    alert('下班日期和时间必须晚于上班日期和时间')
+    return
+  }
   const newRecord: ClockRecord = {
     id: record.value?.id,
-    date: date.value,
+    date: manualClockInDate.value,
     clockIn: manualClockIn.value,
     clockOut: manualClockOut.value,
+    clockOutDate: manualClockOutDate.value,
     breakMinutes: 0,
     workMinutes: workMins,
     isManual: true,
@@ -474,19 +522,57 @@ onMounted(() => {
   margin-bottom: 6px;
 }
 
-.time-input, .text-input {
+.date-time-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 10px;
+}
+
+.date-input {
   width: 100%;
   height: 44px;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 0 12px;
-  font-size: 16px;
+  padding: 0 8px;
+  font-size: 14px;
   background: #fafafa;
   box-sizing: border-box;
   color: #323233;
 }
 
-/* 请假类型按钮选择 */
+.date-input:focus, .time-input:focus, .text-input:focus {
+  outline: none;
+  border-color: #1989fa;
+}
+
+.next-day-label {
+  display: block;
+  color: #1989fa;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.modal-box {
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(24px + 58px + env(safe-area-inset-bottom, 0px));
+  margin-bottom: 0;
+}
+
+.modal-btns {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 10px;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+}
+
 .type-btns {
   display: flex;
   gap: 8px;
@@ -538,9 +624,5 @@ onMounted(() => {
   margin: -8px 0 12px;
 }
 
-.modal-btns {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-}
+/* 请假类型按钮选择 */
 </style>

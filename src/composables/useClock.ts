@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getRecord, saveRecord, getSetting } from '@/stores'
+import { getRecord, getLatestOpenRecord, saveRecord, getSetting } from '@/stores'
 import { calcWorkMinutes, nowTimeString, todayString, dayjs, formatMinutes } from '@/utils/time'
 import { pushClockInToServer, pushClockOutToServer } from '@/utils/api-client'
 import type { ClockRecord } from '@/db'
@@ -14,6 +14,8 @@ export function useClock() {
     loading.value = true
     try {
       record.value = await getRecord(today.value)
+      // 凌晨打开应用时，如果今天没有记录，继续显示最近一条未签退记录
+      if (!record.value) record.value = await getLatestOpenRecord()
       breakMinutes.value = Number(await getSetting('breakMinutes'))
     } finally {
       loading.value = false
@@ -40,8 +42,16 @@ export function useClock() {
   function computeCurrentWorkMinutes(): number {
     if (!hasClockedIn.value) return 0
     if (hasClockedOut.value) return record.value?.workMinutes ?? 0
-    const now = nowTimeString()
-    return calcWorkMinutes(clockInTime.value, now, 0)
+    const now = dayjs()
+    const nowTime = now.format('HH:mm')
+    const nowDate = now.format('YYYY-MM-DD')
+    return calcWorkMinutes(
+      clockInTime.value,
+      nowTime,
+      0,
+      record.value?.date,
+      nowDate,
+    )
   }
 
   const workTimeDisplay = ref('0min')
@@ -77,12 +87,17 @@ export function useClock() {
 
   async function clockOut() {
     if (!record.value) return
-    const now = nowTimeString()
-    record.value.clockOut = now
+    const now = dayjs()
+    const nowTime = now.format('HH:mm')
+    const nowDate = now.format('YYYY-MM-DD')
+    record.value.clockOut = nowTime
+    record.value.clockOutDate = nowDate
     record.value.workMinutes = calcWorkMinutes(
       record.value.clockIn,
-      now,
-      0
+      nowTime,
+      0,
+      record.value.date,
+      nowDate,
     )
     await saveRecord(record.value)
     updateClockState()

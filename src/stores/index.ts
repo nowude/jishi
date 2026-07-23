@@ -27,6 +27,14 @@ export async function getRecord(date: string): Promise<ClockRecord | undefined> 
   return db.records.where('date').equals(date).first()
 }
 
+/** 获取最近一条未签退记录，用于跨午夜加班 */
+export async function getLatestOpenRecord(): Promise<ClockRecord | undefined> {
+  const records = await db.records.toArray()
+  return records
+    .filter((record) => Boolean(record.clockIn) && !record.clockOut)
+    .sort((a, b) => `${b.date}T${b.clockIn}`.localeCompare(`${a.date}T${a.clockIn}`))[0]
+}
+
 export async function getRecordsInRange(start: string, end: string): Promise<ClockRecord[]> {
   return db.records
     .where('date')

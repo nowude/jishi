@@ -10,19 +10,31 @@ dayjs.extend(isoWeek)
 export { dayjs }
 
 /**
- * 计算两个时间字符串之间的工时（分钟）
- * 工时 = clockOut - clockIn，不扣午休
+ * 计算两个时间字符串之间的工时（分钟）。
+ * 传入日期时支持跨午夜；不传日期时兼容旧记录，按同一天计算。
  */
-export function calcWorkMinutes(clockIn: string, clockOut: string, _breakMinutes?: number): number {
+export function calcWorkMinutes(
+  clockIn: string,
+  clockOut: string,
+  _breakMinutes = 0,
+  clockInDate?: string,
+  clockOutDate?: string,
+): number {
   if (!clockIn || !clockOut) return 0
-  const inParts = clockIn.split(':').map(Number)
-  const outParts = clockOut.split(':').map(Number)
-  const inH = inParts[0] ?? 0
-  const inM = inParts[1] ?? 0
-  const outH = outParts[0] ?? 0
-  const outM = outParts[1] ?? 0
-  const totalMinutes = (outH * 60 + outM) - (inH * 60 + inM)
-  return Math.max(0, totalMinutes)
+
+  const parseTime = (value: string) => {
+    const [hours = 0, minutes = 0] = value.split(':').map(Number)
+    return hours * 60 + minutes
+  }
+
+  if (clockInDate && clockOutDate) {
+    const start = dayjs(`${clockInDate}T${clockIn}`)
+    const end = dayjs(`${clockOutDate}T${clockOut}`)
+    if (!start.isValid() || !end.isValid()) return 0
+    return Math.max(0, end.diff(start, 'minute'))
+  }
+
+  return Math.max(0, parseTime(clockOut) - parseTime(clockIn))
 }
 
 /**
