@@ -335,29 +335,41 @@ onMounted(() => {
 }
 
 .page-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
+  min-height: 56px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
   background: #fff;
   border-bottom: 1px solid #ebedf0;
   position: sticky;
   top: 0;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .back-btn {
+  justify-self: start;
+  width: auto;
+  min-width: 72px;
+  white-space: nowrap;
   background: none;
   border: none;
-  font-size: 17px;
+  font-size: 16px;
+  line-height: 24px;
   color: #1989fa;
   cursor: pointer;
-  padding: 4px 8px;
-  width: 60px;
+  padding: 4px 0;
   text-align: left;
 }
 
 .page-title {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
   font-size: 15px;
   font-weight: 600;
 }
@@ -534,8 +546,8 @@ onMounted(() => {
 
 .date-time-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
   align-items: end;
 }
 
@@ -544,17 +556,21 @@ onMounted(() => {
 }
 
 .date-input, .time-input {
-  width: 100%;
+  display: block;
+  width: 100% !important;
+  min-width: 0;
+  max-width: 100%;
   height: 44px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
   padding: 0 10px;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 44px;
   background: #fafafa;
   box-sizing: border-box;
   color: #323233;
-  display: block;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .date-input {
